@@ -2,11 +2,11 @@
 #include <unistd.h>
 
 
-const int posargs = 2; /* Number of positional arguments */
+#define NARGS 2 /* Number of positional arguments */
 
 struct args
 {
-  int args[posargs]; /* it, nt */
+  int args[NARGS]; /* it, nt */
   int prow, pcol;
   char *outputdir;
 };
@@ -25,26 +25,26 @@ int parseArgs(int argc, char **argv, struct args *args)
   args->outputdir = "outputdir";
 
   /* Positional args */
-  if (argc <= 1+posargs) {
+  if (argc <= 1+NARGS) {
     fprintf(stderr, "Not enough input arguments.\n");
     helpMessage();
     return 1;
   }
 
-  for (int i = 1; i <= posargs; i++){
+  for (int i = 1; i <= NARGS; i++){
     args->args[i-1] = atoi(argv[i]);
   }
 
   /* Optional args */
-  argc -= posargs;
-  argv += posargs;
+  argc -= NARGS;
+  argv += NARGS;
   if (argc > 1 && argv[1][0] != '-') {
     fprintf(stderr, "Too many input arguments.\n");
     helpMessage();
     return 1;
   }
 
-  DEBUG_PRINT("argc: %d, argv[0]:%s\n", argc, argv[0]);
+  DEBUG_PRINT0("argc: %d, argv[0]:%s\n", argc, argv[0]);
   int c;
   while ((c = getopt(argc, argv, "r:c:o:h")) != -1) {
     switch (c) {

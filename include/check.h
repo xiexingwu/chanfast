@@ -1,3 +1,6 @@
+#ifndef CHECK_H
+#define CHECK_H
+
 #include <mpi.h>
 #include <fftw3.h>
 #include <stdio.h>
@@ -6,11 +9,18 @@
 #include <float.h>
 #include <string.h>
 
+extern int nrank;
+
+#define DEBUG_PRINT0 \
+  if (nrank == 0)    \
+  DEBUG_PRINT
+
 #ifdef DEBUG
 #define DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__)
 #else
 #define DEBUG_PRINT(...) do {} while (0)
 #endif
+
 
 #define check(e) \
   ((void)((e) ? 0 : __check(#e, __FILE__, __LINE__)))
@@ -37,3 +47,5 @@
       __typeof__ (b) _b = (b); \
       _a < _b ? _a : _b; } \
   )
+
+#endif /* CHECK_H */
