@@ -9,12 +9,11 @@ Arbitrary shared-memory comm (`sm_comm`) split where each `sm_comm` handles its 
 1. Arbitrary `sm_comm` split.
 
     ```
-    +-----+-----+    '|' denotes boundary of single proc
-    |  1  |  2  |
-    |     +-----+     +--> p_col
-    +-----+  3  |     |
-    |  2  |     |     V
-    +-----+-----+     p_row
+    +-----+-----+-----+    '+' denotes boundary of single proc
+    |  1        |  2  |     +--> p_col
+    +-----+-----+-----+     |
+    |  2  |  3        |     V
+    +-----+-----+-----+     p_row
     ```
 
     1. Leader in each `sm_comm` manages transfers to/from other `sm_comm`.
@@ -32,26 +31,24 @@ Arbitrary shared-memory comm (`sm_comm`) split where each `sm_comm` handles its 
 
     - pencil transposes should be unaffected since the 2 sub-communicators don't share common transpose regions.
 
-2. Enforce size of `sm_comm` to either a) divide `p_row` or b) be divisible by `p_row`. 
+2. Enforce size of `sm_comm` to either a) divide `p_col` or b) be divisible by `p_col`.
     ```
-    a)                                 b)
-    +-----+-----+-----+-----+          +-----+-----+
-    |  1  |  1  |  2  |  2  |          |  1  |  3  |
-    |     |     |     |     |          |     |     |
-    |     |     |     |     |          +-----+-----+
-    |     |     |     |     |          |  2  |  4  |
-    |     |     |     |     |          |     |     |
-    + ----+-----+ ----+-----+          + ----+-----+
+    a)                     b)
+    +-----+-----+          +-----+-----+
+    |  1        |          |  1  |  2  |
+    +-----+-----+          +-----+-----+
+    |  2        |          |  3  |  4  |
+    +-----+-----+          +-----+-----+
     ```
     This can be achieved by:
-    - Ensuring `p_row` is set accordingly with `nCPU per node` on particular device to satisfy above conditions.
+    - Ensuring `p_col` is set accordingly with `nCPU per node` on particular device to satisfy above conditions.
         - Will need to make sure entire nodes are occupied (i.e. don't share a node with other jobs)
-    - Ensuring procs on a node are allocated to the same `p_row`. Options:
+    - Ensuring procs on a node are allocated to the same `p_col`. Options:
         1. Block-allocate the processes, i.e. `(0-23)` on `node 0`, `(24-47)` on `node 1`, ...
 
             The proc ranks (in `MPI_COMM_WORLD`) on a node **SHOULD** by default ensure `MPI_Cart_create(...,reorder=1,...)` aligns with the shared memory communicator.
 
         2. Deal-allocate the processes, i.e. `(0,n,2n,...)` on `node 0`, `(1,n+1,2n+1,...)` on `node 1`, ...
 
-            Same as above? Or split communicator by shared memory, then create adjacency matrix for `MPI_Graph_create` to ensure they are aligned in `p_row`.
+            Same as above? Or split communicator by shared memory, then create adjacency matrix for `MPI_Graph_create` to ensure they are aligned in `p_col`.
 
