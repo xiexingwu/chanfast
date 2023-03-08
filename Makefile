@@ -6,7 +6,7 @@ CC = mpicc
 CFLAGS = -I$(IDIR)
 LIBS = -lm
 
-_DEP = check.h parser.h globals_sim.h 
+_DEP = check.h parser.h globals_sim.h fourth.h rk3.h
 _OBJ = mpi_plan.o main.o 
 
 TARGET = a.out
