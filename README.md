@@ -1,3 +1,7 @@
+
+# Style guide
+https://www.doc.ic.ac.uk/lab/cplus/cstyle.html
+
 # Decomp & MPI partition
 
 ## Decisions
