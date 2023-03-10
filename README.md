@@ -31,9 +31,10 @@ Arbitrary shared-memory comm (`sm_comm`) split where each `sm_comm` handles its 
         In above example, during `Send/Recv` to the right, first proc in `sm_comm_1` only sees one proc in `sm_comm_2`, while second proc in `sm_comm_1` only sees one proc in `sm_comm_3`.
 
     ## Question
-    Are there benefits/drawbacks for splitting `sm_comm_2` into 2 sub-communicators that don't crossover `p_col`?
+    Are there benefits/drawbacks for splitting `sm_comm_2` into 2 sub-communicators that don't crossover `p_col`? **YES**
 
-    - pencil transposes should be unaffected since the 2 sub-communicators don't share common transpose regions.
+    - 2D/3D array indexing will be extremely difficult to handle
+
 
 2. Enforce size of `sm_comm` to either a) divide `p_col` or b) be divisible by `p_col`.
     ```
