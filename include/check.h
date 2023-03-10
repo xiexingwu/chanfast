@@ -9,14 +9,14 @@
 #include <float.h>
 #include <string.h>
 
-extern int nrank;
+extern int RANK;
 
 #define DEBUG_PRINT0 \
-  if (nrank == 0)    \
+  if (RANK == 0)    \
   DEBUG_PRINT
 
 #ifdef DEBUG
-#define DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__)
+#define DEBUG_PRINT(...) fprintf(stderr, __VA_ARGS__); fflush(stderr)
 #else
 #define DEBUG_PRINT(...) do {} while (0)
 #endif

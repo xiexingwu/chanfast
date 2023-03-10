@@ -41,7 +41,7 @@ const double betg_y = 0;
 const double betg_z = 0;
 const double prandtl = 0.71;
 
-int nrank = -1;
+int RANK = -1;
 
 int main(int argc, char **argv)
 {
@@ -49,7 +49,7 @@ int main(int argc, char **argv)
 
   /* Parse args */
   MPI_Init(&argc, &argv);
-  MPI_Comm_rank(MPI_COMM_WORLD, &nrank);
+  MPI_Comm_rank(MPI_COMM_WORLD, &RANK);
 
   struct args args;
   if (parseArgs(argc, argv, &args)){
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
   pcol = args.prow > 0 ? args.pcol : pcol;
   const char *outputdir = args.outputdir;
 
-  DEBUG_PRINT0("%d: prow: %d\npcol: %d\nout: %s\n", nrank, args.prow, args.pcol, args.outputdir);
+  DEBUG_PRINT0("%d: prow: %d\npcol: %d\nout: %s\n", RANK, args.prow, args.pcol, args.outputdir);
 
   initMpiPlan();
 
