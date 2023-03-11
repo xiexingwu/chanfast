@@ -1,5 +1,6 @@
 
 a.out
+logs/*
 src/obj/
 obsolete/
 

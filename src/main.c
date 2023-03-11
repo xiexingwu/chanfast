@@ -1,8 +1,13 @@
 #include <check.h>
-#include <mpi_plan.h>
+#include <logging.h>
 
+#include <mpi_plan.h>
+#include <tensor.h>
 #include <parser.h>
 #include <globals_sim.h>
+
+#include <test_mpi_plan.h>
+#include <test_tensor.h>
 
 const double lx = 2*M_PI;
 const double ly = 1*M_PI;
@@ -51,6 +56,8 @@ int main(int argc, char **argv)
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &RANK);
 
+  initLogging();
+
   struct args args;
   if (parseArgs(argc, argv, &args)){
     return 1;
@@ -65,7 +72,13 @@ int main(int argc, char **argv)
 
   initMpiPlan();
 
+  // testMallocShared();
+  // testMallocShared2();
+  // testTensor3();
+  testTensor3Shared();
+
   MPI_Barrier(MPI_COMM_WORLD);
+  freeLogging();
   MPI_Finalize();
   return 0;
 }
