@@ -1,6 +1,6 @@
 
 a.out
-logs/*
+logs/*.log
 src/obj/*.o
 obsolete/
 
