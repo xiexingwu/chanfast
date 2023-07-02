@@ -17,7 +17,6 @@ void testTensor3()
 
   int ***p3 = (int ***) tensor3(st, en, sizeof(int));
 
-  MPI_Barrier( MPI_COMM_WORLD);
   int ***q3 = viewTensor3(&p3[st[0]][st[1]][st[2]], st2, en2, sizeof(int));
 
   /* Write 3D */
@@ -39,6 +38,7 @@ void testTensor3()
   /* Read 1D */
   for (int i = 0; i < n0 * n1 * n2; i++)
     LOG_DEBUG("q[%2d] (%p) = %d\n", i, &p3[st[0]][st[1]][st[2] + i], p3[st[0]][st[1]][st[2] + i]);
+
   freeTensor3(p3, st, sizeof(int));
 }
 
@@ -57,7 +57,7 @@ void testTensor3Shared(){
 
   fenceTensor3(&p3[st[0]][st[1]][st[2]]);
   LOG_DEBUG("Finished write.\n");
-  MPI_Barrier(MPI_COMM_WORLD);
+
   /* Read 1D */
   for (int i = 0; i < n0 * n1 * n2; i++)
     LOG_DEBUG("p[%2d] = %d\n", i, p3[st[0]][st[1]][st[2] + i]);
@@ -72,5 +72,6 @@ void testTensor3Shared(){
   /* Read 1D */
   for (int i = 0; i < n0 * n1 * n2; i++)
     LOG_DEBUG("q[%2d] = %d\n", i, p3[st[0]][st[1]][st[2] + i]);
+
   freeTensor3Shared(p3, st, sizeof(int));
 }

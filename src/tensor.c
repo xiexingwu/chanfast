@@ -3,15 +3,15 @@
 #include <tensor.h>
 #include <mpi_plan.h>
 
-MPI_Win tens_wins[MAX_WINS] = {NULL};
-void *tens_adds[MAX_WINS] = {NULL};
+MPI_Win tens_wins[MAX_WINS] = {MPI_WIN_NULL};
+void *tens_adds[MAX_WINS] = {NULL}; // Addresses
 
 int findAvailWin()
 {
   for (int loc = 0;; loc++)
   {
     check(loc < MAX_WINS);
-    if (tens_wins[loc] == NULL)
+    if (tens_wins[loc] == MPI_WIN_NULL)
       return loc;
   }
 }
