@@ -1,7 +1,7 @@
 
 a.out
 logs/*
-src/obj/
+src/obj/*.o
 obsolete/
 
 .vscode
