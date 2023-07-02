@@ -2,6 +2,15 @@
 # Style guide
 https://www.doc.ic.ac.uk/lab/cplus/cstyle.html
 
+# Usage
+
+## Testing
+```sh
+make DEFINES=-DDEBUG all
+mpirun -n 4 ./a.out 1 1 -r 2 -c 2
+paste logs/*.log | less
+```
+
 # Decomp & MPI partition
 
 ## Decisions
