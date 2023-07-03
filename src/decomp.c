@@ -1,186 +1,295 @@
-#include "check.h"
-#include "decomp.h"
+#include <check.h>
+#include <logging.h>
+#include <decomp.h>
+#include <mpi_plan.h>
 
+#include <globals_sim.h>
 
-//
-// Find sub-domain information held by current processor
-//   INPUT:
-//     nx, ny, nz - global data dimension
-//     pdim[3]    - number of processor grid in each dimension,
-//                  valid values: 1 - distribute locally;
-//                                2 - distribute across p_row;
-//                                3 - distribute across p_col
-//   OUTPUT:
-//     lstart[3]  - starting index
-//     lend[3]    - ending index
-//     lsize[3]   - size of the sub-block (redundant)
-//
-void partition(int nx, int ny, int nz, int pdim[3],
-    int dims[2], int coord[2],
-    int lstart[3], int lend[3], int lsize[3])
+enum dist_t
 {
-    int *st, *en, *sz;
-    int i, gsize;
+  DIST0,
+  DIST1,
+  DISTL
+}; // flag to distribute locally, across dims[0], across dims[1]
 
-    for (i = 0; i < 3; i++) {
+static int *x0st, *x0en, *x0dist;
+static int *y0st, *y0en, *y0dist;
+static int *z0st, *z0en, *z0dist;
+static int *x1st, *x1en, *x1dist;
+static int *y1st, *y1en, *y1dist;
+static int *z1st, *z1en, *z1dist;
 
-        if (i == 0) {
-            gsize = nx;
-        }
-        else if (i == 1) {
-            gsize = ny;
-        }
-        else if (i == 2) {
-            gsize = nz;
-        }
+static pencil_t *initPencil(int *st0, int *en0, int *dist0,
+                            int *st1, int *en1, int *dist1)
+{
+  pencil_t *p = malloc(sizeof(pencil_t));
+  p->st0 = st0;
+  p->en0 = en0;
+  p->dist0 = dist0;
+  p->st1 = st1;
+  p->en1 = en1;
+  p->dist1 = dist1;
+  return p;
+}
 
-        if (pdim[i] == 1) {         // all local
-            lstart[i] = 1;
-            lend[i]   = gsize;
-            lsize[i]  = gsize;
-        }
-        else if (pdim[i] == 2) {    // distribute across dims[0]
-            st = (int *) malloc(sizeof(int) * dims[0]);
-            en = (int *) malloc(sizeof(int) * dims[0]);
-            sz = (int *) malloc(sizeof(int) * dims[0]);
-            check(st != NULL); check(en != NULL); check(sz != NULL);
-            distribute(gsize, dims[0], st, en, sz);
-            lstart[i] = st[coord[0]];
-            lend[i]   = en[coord[0]];
-            lsize[i]  = sz[coord[0]];
-            free(st); free(en); free(sz);
-        }
-        else if (pdim[i] == 3) {    // distribute across dims[1]
-            st = (int *) malloc(sizeof(int) * dims[1]);
-            en = (int *) malloc(sizeof(int) * dims[1]);
-            sz = (int *) malloc(sizeof(int) * dims[1]);
-            check(st != NULL); check(en != NULL); check(sz != NULL);
-            distribute(gsize, dims[1], st, en, sz);
-            lstart[i] = st[coord[1]];
-            lend[i]   = en[coord[1]];
-            lsize[i]  = sz[coord[1]];
-            free(st); free(en); free(sz);
-        }
+/**
+ * Distribute grid points to procs along an arbitrary dimension.
+ * In case of uneven dist, remainder is distributed across higher rank procs.
+ *
+ * INPUT
+ * @param n - number of grid points in dimension to be partitioned
+ * @param proc - number of procs
+ *
+ * OUTPUT
+ * @param st[] - starting indices of procs 0, ..., n01
+ * @param en[] - ending indices
+ * @param sz[] - sizes (redundant)
+ */
+static void distribute(int n, int proc, int st[], int en[], int sz[])
+{
+  /* n = q * nproc + r */
+  int q = n / proc;
+  int r = n - q * proc;
+
+  int i;
+  st[0] = 0;
+  sz[0] = q;
+  en[0] = q - 1;
+
+  /* lower rank procs */
+  for (i = 1; i < proc - r; i++)
+  {
+    st[i] = en[i - 1] + 1;
+    sz[i] = q;
+    en[i] = en[i - 1] + q;
+  }
+  /* higher rank procs */
+  q = q + 1;
+  for (i = proc - r; i < proc; i++)
+  {
+    st[i] = en[i - 1] + 1;
+    sz[i] = q;
+    en[i] = en[i - 1] + q;
+  }
+}
+
+/**
+ * Determine sub-domain info of current proc
+ *
+ * INPUT
+ * @param nx - global nx
+ * @param ny - global ny
+ * @param nz - global nz
+ * @param pdim[3] - array to indicate whether x,y,z are distributed locally or across dims[0] or dims[1]
+ *
+ * OUTPUT
+ * @param lstart[3] - starting indices in x,y,z
+ * @param lend[3] - ending indices
+ * @param lsz[3] - sizes (redundant)
+ */
+static void partition(int nx, int ny, int nz, enum dist_t pdim[3],
+                      int dims[2], int coord[2],
+                      int lstart[3], int lend[3], int lsize[3])
+{
+  int *st, *en, *sz;
+  int i, gsize;
+
+  for (i = 0; i < 3; i++)
+  {
+    switch (i)
+    {
+    case 0:
+      gsize = nx;
+      break;
+    case 1:
+      gsize = ny;
+      break;
+    case 2:
+      gsize = nz;
+      break;
     }
-}
 
-
-//
-// - distributes grid points in one dimension
-// - handles uneven distribution properly
-//
-void distribute(int data1, int proc, int st[], int en[], int sz[])
-// data1 -- data size in any dimension to be partitioned
-// proc  -- number of processors in that dimension
-// st    -- array of starting index
-// en    -- array of ending index
-// sz    -- array of local size (redundant)
-{
-    int i;
-    int size1 = data1 / proc;
-    int nu = data1 - size1 * proc;
-    int nl = proc - nu;
-
-    st[0] = 1;
-    sz[0] = size1;
-    en[0] = size1;
-    for (i = 1; i < nl; i++) {
-        st[i] = en[i - 1] + 1;
-        sz[i] = size1;
-        en[i] = en[i - 1] + size1;
+    int d = -1; // split in dims[d]
+    switch (pdim[i])
+    {
+    case DISTL:
+      lstart[i] = 0;
+      lend[i] = gsize - 1;
+      lsize[i] = gsize;
+      continue;
+    case DIST0:
+      d = 0;
+      break;
+    case DIST1:
+      d = 1;
+      break;
     }
-    size1 = size1 + 1;
-    for (i = nl; i < proc; i++) {
-        st[i] = en[i - 1] + 1;
-        sz[i] = size1;
-        en[i] = en[i - 1] + size1;
-    }
+
+    st = (int *)malloc(sizeof(int) * dims[d]);
+    en = (int *)malloc(sizeof(int) * dims[d]);
+    sz = (int *)malloc(sizeof(int) * dims[d]);
+    check(st != NULL);
+    check(en != NULL);
+    check(sz != NULL);
+    distribute(gsize, dims[d], st, en, sz);
+    lstart[i] = st[coord[d]];
+    lend[i] = en[coord[d]];
+    lsize[i] = sz[coord[d]];
+    free(st);
+    free(en);
+    free(sz);
+  }
 }
 
-
-//
-// Define how each dimension is distributed across processors
-//   e.g. 17 meshes across 4 processors would be distributed as (4,4,4,5)
-//   such global information is required locally at MPI_Alltoallw time
-//
-void get_dist(int nx, int ny, int nz, int dims[2],
-    int x1st[], int x1en[], int x1dist[],
-    int y1st[], int y1en[], int y1dist[],
-    int y2st[], int y2en[], int y2dist[],
-    int z2st[], int z2en[], int z2dist[])
+/**
+ * Determine how each of nx, ny, nz are distributed across processors in each pencil
+ *
+ * INPUT
+ * @param nx - global nx
+ * @param ny - global ny
+ * @param nz - global nz
+ * @param dims[2] - [prow, pcol]
+ *
+ * OUTPUT
+ * @param [xyz][01](st|en) - start end indices for n[xyz] along prow/pcol
+ * @param [xyz][01]dist - nprocs  n[xyz] along prow/pcol
+ */
+void getDist(int nx, int ny, int nz, decomp_t *d)
 {
-    distribute(nx, dims[0], x1st, x1en, x1dist);
-    distribute(ny, dims[0], y1st, y1en, y1dist);
+  int *dims = d->dims;
 
-    distribute(ny, dims[1], y2st, y2en, y2dist);
-    distribute(nz, dims[1], z2st, z2en, z2dist);
+  /**        : dist
+   * z-pencil: x0, y1
+   * y-pencil: x0, z1
+   * x-pencil: y0, z1
+   * Z-pencil: y0, x1
+   */
+  LOG_DEBUG("Dist nx in 0.\n");
+  distribute(nx, dims[0], x0st, x0en, x0dist);
+  LOG_DEBUG("Dist ny in 0.\n");
+  distribute(ny, dims[0], y0st, y0en, y0dist);
+  LOG_DEBUG("Dist nz in 0.\n");
+  distribute(nz, dims[0], z0st, z0en, z0dist); // Unused
+
+  LOG_DEBUG("Dist nx in 1.\n");
+  distribute(nx, dims[1], x1st, x1en, x1dist);
+  LOG_DEBUG("Dist ny in 1.\n");
+  distribute(ny, dims[1], y1st, y1en, y1dist);
+  LOG_DEBUG("Dist nz in 1.\n");
+  distribute(nz, dims[1], z1st, z1en, z1dist);
+
+  LOG_DEBUG("Finished dist.\n");
 }
 
-
-decomp_plan *create_decomp_plan(int dims[2], int coord[2],
-    int nx, int ny, int nz)
+decomp_t *createDecomp(int dims[2], int coord[2],
+                       int nx, int ny, int nz)
 {
-    decomp_plan *p = (decomp_plan *) malloc(sizeof(decomp_plan));
-    check(p != NULL);
+  decomp_t *d = (decomp_t *)malloc(sizeof(decomp_t));
+  check(d != NULL);
 
-    // distribute mesh points
-    p->x1st   = (int *) malloc(dims[0] * sizeof(int));
-    p->x1en   = (int *) malloc(dims[0] * sizeof(int));
-    p->x1dist = (int *) malloc(dims[0] * sizeof(int));
-    p->y1st   = (int *) malloc(dims[0] * sizeof(int));
-    p->y1en   = (int *) malloc(dims[0] * sizeof(int));
-    p->y1dist = (int *) malloc(dims[0] * sizeof(int));
-    p->y2st   = (int *) malloc(dims[1] * sizeof(int));
-    p->y2en   = (int *) malloc(dims[1] * sizeof(int));
-    p->y2dist = (int *) malloc(dims[1] * sizeof(int));
-    p->z2st   = (int *) malloc(dims[1] * sizeof(int));
-    p->z2en   = (int *) malloc(dims[1] * sizeof(int));
-    p->z2dist = (int *) malloc(dims[1] * sizeof(int));
-    check(p->x1st   != NULL);
-    check(p->x1en   != NULL);
-    check(p->x1dist != NULL);
-    check(p->y1st   != NULL);
-    check(p->y1en   != NULL);
-    check(p->y1dist != NULL);
-    check(p->y2st   != NULL);
-    check(p->y2en   != NULL);
-    check(p->y2dist != NULL);
-    check(p->z2st   != NULL);
-    check(p->z2en   != NULL);
-    check(p->z2dist != NULL);
+  LOG_DEBUG("Starting decomp.\n");
 
-    get_dist(nx, ny, nz, dims,
-        p->x1st, p->x1en, p->x1dist,
-        p->y1st, p->y1en, p->y1dist,
-        p->y2st, p->y2en, p->y2dist,
-        p->z2st, p->z2en, p->z2dist);
+  d->dims = cart_dims;
 
-    // generate partition information - starting/ending index etc.
-    partition(nx, ny, nz, (int []) {1, 2, 3}, dims, coord,
-        p->xst, p->xen, p->xsz);
-    partition(nx, ny, nz, (int []) {2, 1, 3}, dims, coord,
-        p->yst, p->yen, p->ysz);
-    partition(nx, ny, nz, (int []) {2, 3, 1}, dims, coord,
-        p->zst, p->zen, p->zsz);
+  // distribute mesh points
+  x0st = malloc(dims[0] * sizeof(int));
+  x0en = malloc(dims[0] * sizeof(int));
+  x0dist = malloc(dims[0] * sizeof(int));
+  y0st = malloc(dims[0] * sizeof(int));
+  y0en = malloc(dims[0] * sizeof(int));
+  y0dist = malloc(dims[0] * sizeof(int));
+  z0st = malloc(dims[0] * sizeof(int));   // Unused
+  z0en = malloc(dims[0] * sizeof(int));   // Unused
+  z0dist = malloc(dims[0] * sizeof(int)); // Unused
+  x1st = malloc(dims[1] * sizeof(int));
+  x1en = malloc(dims[1] * sizeof(int));
+  x1dist = malloc(dims[1] * sizeof(int));
+  y1st = malloc(dims[1] * sizeof(int));
+  y1en = malloc(dims[1] * sizeof(int));
+  y1dist = malloc(dims[1] * sizeof(int));
+  z1st = malloc(dims[1] * sizeof(int));
+  z1en = malloc(dims[1] * sizeof(int));
+  z1dist = malloc(dims[1] * sizeof(int));
 
-    return p;
+  check(x0st != NULL);
+  check(x0en != NULL);
+  check(x0dist != NULL);
+  check(y0st != NULL);
+  check(y0en != NULL);
+  check(y0dist != NULL);
+  check(z1st != NULL);
+  check(z1en != NULL);
+  check(z1dist != NULL);
+  check(x1st != NULL);
+  check(x1en != NULL);
+  check(x1dist != NULL);
+  check(y1st != NULL);
+  check(y1en != NULL);
+  check(y1dist != NULL);
+  check(z1st != NULL);
+  check(z1en != NULL);
+  check(z1dist != NULL);
+
+  d->pz = initPencil(x0st, x0en, x0dist, y1st, y1en, y1dist);
+  d->py = initPencil(x0st, x0en, x0dist, z1st, z1en, z1dist);
+  d->px = initPencil(y0st, y0en, y0dist, z1st, z1en, z1dist);
+  d->pZ = initPencil(y0st, y0en, y0dist, x1st, x1en, x1dist);
+
+  getDist(nx, ny, nz, d);
+
+  LOG_DEBUG("Finished dist.\n");
+
+  // generate partition information - starting/ending index etc.
+  partition(nx, ny, nz, (int[]){DIST0, DIST1, DISTL}, dims, coord,
+            d->pz->st, d->pz->en, d->pz->sz);
+  partition(nx, ny, nz, (int[]){DIST0, DISTL, DIST1}, dims, coord,
+            d->py->st, d->py->en, d->py->sz);
+  partition(nx, ny, nz, (int[]){DISTL, DIST0, DIST1}, dims, coord,
+            d->px->st, d->px->en, d->px->sz);
+  partition(nx, ny, nz, (int[]){DIST1, DIST0, DISTL}, dims, coord,
+            d->pZ->st, d->pZ->en, d->pZ->sz);
+
+  return d;
 }
 
-
-void destroy_decomp_plan(decomp_plan *p)
+void freeDecomp(decomp_t *d)
 {
-    free(p->x1st);
-    free(p->x1en);
-    free(p->x1dist);
-    free(p->y1st);
-    free(p->y1en);
-    free(p->y1dist);
-    free(p->y2st);
-    free(p->y2en);
-    free(p->y2dist);
-    free(p->z2st);
-    free(p->z2en);
-    free(p->z2dist);
+  LOG_DEBUG("Freed decomp\n");
+  free(d->pz);
+  free(d->py);
+  free(d->px);
+  free(d->pZ);
 
-    free(p);
+  free(x0st);
+  free(x0en);
+  free(x0dist);
+  free(y0st);
+  free(y0en);
+  free(y0dist);
+  free(z0st);
+  free(z0en);
+  free(z0dist);
+  free(x1st);
+  free(x1en);
+  free(x1dist);
+  free(y1st);
+  free(y1en);
+  free(y1dist);
+  free(z1st);
+  free(z1en);
+  free(z1dist);
+
+  free(d);
+}
+
+void initDecompPlan()
+{
+  decomp_t *decomp_d = createDecomp(cart_dims, cart_coord, nx, ny, nz + 2 * nghost_z);
+  decomp_t *decomp_c = createDecomp(cart_dims, cart_coord, nx / 2 + 1, ny, nz + 2 * nghost_z);
+}
+
+void freeDecompPlan()
+{
+  freeDecomp(decomp_d);
+  freeDecomp(decomp_c)
 }

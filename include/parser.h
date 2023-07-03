@@ -1,4 +1,5 @@
 #include <check.h>
+#include <logging.h>
 #include <unistd.h>
 
 
@@ -26,7 +27,7 @@ int parseArgs(int argc, char **argv, struct args *args)
 
   /* Positional args */
   if (argc <= 1+NARGS) {
-    fprintf(stderr, "Not enough input arguments.\n");
+    LOG_ERR(0, "Not enough input arguments.\n");
     helpMessage();
     return 1;
   }
@@ -39,12 +40,12 @@ int parseArgs(int argc, char **argv, struct args *args)
   argc -= NARGS;
   argv += NARGS;
   if (argc > 1 && argv[1][0] != '-') {
-    fprintf(stderr, "Too many input arguments.\n");
+    LOG_ERR(0, "Too many input arguments.\n");
     helpMessage();
     return 1;
   }
 
-  DEBUG_PRINT0("argc: %d, argv[0]:%s\n", argc, argv[0]);
+  LOG_STDOUT(0, "argc: %d, argv[0]:%s\n", argc, argv[0]);
   int c;
   while ((c = getopt(argc, argv, "r:c:o:h")) != -1) {
     switch (c) {

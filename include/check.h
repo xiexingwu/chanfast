@@ -11,6 +11,12 @@
 
 extern int RANK;
 
+#ifdef DEBUG
+#define MPI PMPI
+#define fftw_malloc malloc
+#define fftw_free free
+#endif
+
 #define DEBUG_PRINT0 \
   if (RANK == 0)    \
   DEBUG_PRINT

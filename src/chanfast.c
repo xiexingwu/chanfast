@@ -1,11 +1,23 @@
-#include <config.h>
+#include <check.h>
+#include <logging.h>
+#include <io.h>
 
-void chanfast4(config_t *sim_config){
-  validateConfig(sim_config);
+#include <globals_sim.h>
+#include <rk3.h>
+
+#include <mpi_plan.h>
+#include <tensor.h>
+#include <decomp.h>
+#include <transpose.h>
+
+
+
+void chanfast4(){
+  // validateConfig();
   
   initMpiPlan();
   initDecompPlan();
-  initFftwPlan();
+  initFftPlan();
   initTransposePlan();
   initGhostzPlan();
   initIo();
@@ -22,7 +34,7 @@ void chanfast4(config_t *sim_config){
 
   for (; it < nt; it++){
     getCfl();
-    for (step = 0; step < 3; step++){
+    for (int step = 0; step < 3; step++){
       if (step == 0){
         resetRkAccumulation();
       }
@@ -61,11 +73,11 @@ void chanfast4(config_t *sim_config){
   freeGrid();
 
   freeHelmholtzSolver();
-  initIo();
-  initGhostzPlan();
-  initTransposePlan();
-  initFftwPlan();
-  initDecompPlan();
-  initMpiPlan();
+  // initIo();
+  // initGhostzPlan();
+  // initTransposePlan();
+  // initFftwPlan();
+  // initDecompPlan();
+  // initMpiPlan();
 
 }

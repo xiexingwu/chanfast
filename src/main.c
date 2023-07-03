@@ -8,14 +8,15 @@
 
 #include <test_mpi_plan.h>
 #include <test_tensor.h>
+#include <test_transpose.h>
 
 const double lx = 2*M_PI;
 const double ly = 1*M_PI;
 const double lz = 1.0;
 
-const int nx = 16;
-const int ny = 16;
-const int nz = 40;
+const int nx = 8;
+const int ny = 8;
+const int nz = 10;
 
 const int nghost_x = 3;
 const int nghost_y = 3;
@@ -51,12 +52,12 @@ int RANK = -1;
 int main(int argc, char **argv)
 {
 
-
   /* Parse args */
   MPI_Init(&argc, &argv);
+  MPI_Comm_set_errhandler( MPI_COMM_WORLD , MPI_ERRORS_RETURN);
   MPI_Comm_rank(MPI_COMM_WORLD, &RANK);
-
   initLogging();
+
 
   struct args args;
   if (parseArgs(argc, argv, &args)){
@@ -68,17 +69,23 @@ int main(int argc, char **argv)
   pcol = args.prow > 0 ? args.pcol : pcol;
   const char *outputdir = args.outputdir;
 
-  DEBUG_PRINT0("%d: prow: %d\npcol: %d\nout: %s\n", RANK, args.prow, args.pcol, args.outputdir);
+  LOG_STDOUT(0, "%d: prow: %d\npcol: %d\nout: %s\n", RANK, args.prow, args.pcol, args.outputdir);
 
   initMpiPlan();
 
   // testMallocShared();
   // testMallocShared2();
   // testTensor3();
-  testTensor3Shared();
+  // testTensor3Shared();
+  testZY();
 
-  MPI_Barrier(MPI_COMM_WORLD);
+  /* Finalise */
+  freeMpiPlan();
+
   freeLogging();
+  DEBUG_PRINT("%d - logging freed\n", RANK);
   MPI_Finalize();
+  DEBUG_PRINT("%d - MPI Finalized\n", RANK);
+
   return 0;
 }

@@ -68,6 +68,7 @@ void testMallocShared2()
   int d0, d0_2d;
   int *p0, **p0_2d;
   MPI_Win_shared_query(sm_win, 0, &s0, &d0, &p0);
+  LOG_DEBUG("p0 -> %p\n", p0);
   MPI_Win_shared_query(sm_win2, 0, &s0_2d, &d0_2d, &p0_2d);
 
   /* Get shared-memory indices */
@@ -110,7 +111,7 @@ void testMallocShared2()
   zst[1] = sm_zst[1] + local_n * sm_rank;
   zen[0] = sm_zen[0];
   zen[1] = sm_zen[1] - local_n * (sm_size - sm_rank - 1);
-  DEBUG_PRINT("[%d:%d] - (%d-%d, %d-%d)\n", RANK, sm_rank, zst[0], zen[0], zst[1], zen[1]);
+  LOG_DEBUG("[%d] - (%d-%d, %d-%d)\n", sm_rank, zst[0], zen[0], zst[1], zen[1]);
   for (int i = 0; i < sm_zsz[0]; i++)
   {
     p0_2d[i] = (int *)i;
@@ -123,8 +124,8 @@ void testMallocShared2()
   // MPI_Win_fence(0, sm_win2); // This fence shouldn't be needed since 2d-tensor indexing array shouldn't need to change once assigned
   for (int i = 0; i < sm_zsz[0]; i++)
   {
-    printf("[%d] p0_2d[%d] = %p\n", RANK, i, p0_2d[i]);
+    LOG_INFO("p0_2d[%d] = %p\n", i, p0_2d[i]);
     for (int j = 0; j < sm_zsz[1]; j++)
-      printf("[%d] p0[%d] = %03d\n", RANK, sm_zsz[1] * i + j, p0[sm_zsz[1] * i + j]);
+      LOG_INFO("p0[%d] = %03d\n", sm_zsz[1] * i + j, p0[sm_zsz[1] * i + j]);
   }
 }

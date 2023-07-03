@@ -57,3 +57,8 @@ Arbitrary shared-memory comm (`sm_comm`) split where each `sm_comm` handles its 
 
             Same as above? Or split communicator by shared memory, then create adjacency matrix for `MPI_Graph_create` to ensure they are aligned in `p_col`.
 
+# Valgrind
+
+```
+LD_PRELOAD=/usr/local/lib/valgrind/libmpiwrap-amd64-linux.so mpirun -n 4 /usr/local/bin/valgrind ./a.out 1 2 -r 2 -c 2
+```

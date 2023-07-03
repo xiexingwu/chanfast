@@ -4,12 +4,12 @@ ODIR = ./src/obj
 LOGS = ./logs
 
 CC = mpicc
-CFLAGS = -I$(IDIR)
+CFLAGS = -I$(IDIR) -g
 LIBS = -lm -lfftw3
 WARNS = -Wno-discarded-qualifiers -Wno-int-to-pointer-cast -Wno-incompatible-pointer-types
 
-_DEP = check.h logging.h parser.h globals_sim.h fourth.h rk3.h
-_OBJ = main.o logging.o mpi_plan.o tensor.o
+_DEP = check.h logging.h parser.h globals_sim.h fourth.h rk3.h io.h
+_OBJ = main.o logging.o mpi_plan.o tensor.o decomp.o transpose.o io.o
 
 TARGET = a.out
 
