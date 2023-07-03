@@ -1,0 +1,3 @@
+[submodule "cmake/findfftw"]
+	path = cmake/findfftw
+	url = https://github.com/egpbos/findfftw.git
