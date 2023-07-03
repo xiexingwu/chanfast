@@ -17,7 +17,7 @@ void get_dist(
     int z2st[], int z2en[], int z2dist[]);
 
 // Decomp
-Decomp::Decomp(){} // Dummy
+Decomp::Decomp() {} // Dummy
 Decomp::Decomp(
     int dims[2], int coord[2],
     int nx, int ny, int nz)
@@ -60,22 +60,26 @@ Decomp::Decomp(
   pZ = Pencil(y0st, y0en, y0dist, x1st, x1en, x1dist);
 
   // generate partition information - starting/ending index etc.
+  int pdim_z[3] = {D_ROW, D_COL, D_NONE};
+  int pdim_y[3] = {D_ROW, D_NONE, D_COL};
+  int pdim_x[3] = {D_NONE, D_ROW, D_COL};
+  int pdim_Z[3] = {D_COL, D_ROW, D_NONE};
   partition(
-    nx, ny, nz, 
-    (int[]){D_ROW, D_COL, D_NONE}, dims, coord,
-    pz.st, pz.en, pz.sz);
+      nx, ny, nz,
+      pdim_z, dims, coord,
+      pz.st, pz.en, pz.sz);
   partition(
-    nx, ny, nz, 
-    (int[]){D_ROW, D_NONE, D_COL}, dims, coord,
-    py.st, py.en, py.sz);
+      nx, ny, nz,
+      pdim_y, dims, coord,
+      py.st, py.en, py.sz);
   partition(
-    nx, ny, nz, 
-    (int[]){D_NONE, D_ROW, D_COL}, dims, coord,
-    px.st, px.en, px.sz);
+      nx, ny, nz,
+      pdim_x, dims, coord,
+      px.st, px.en, px.sz);
   partition(
-    nx, ny, nz, 
-    (int[]){D_COL, D_ROW, D_NONE}, dims, coord,
-    pZ.st, pZ.en, pZ.sz);
+      nx, ny, nz,
+      pdim_Z, dims, coord,
+      pZ.st, pZ.en, pZ.sz);
 }
 
 Decomp::~Decomp()
@@ -101,7 +105,7 @@ Decomp::~Decomp()
 }
 
 // Pencil
-Pencil::Pencil(){} // Dummy
+Pencil::Pencil() {} // Dummy
 Pencil::Pencil(
     int *st0, int *en0, int *dist0,
     int *st1, int *en1, int *dist1)
@@ -114,8 +118,7 @@ Pencil::Pencil(
   dist1 = dist1;
 }
 
-Pencil::~Pencil(){}
-
+Pencil::~Pencil() {}
 
 // Distribute grid points to procs along an arbitrary dimension.
 // In case of uneven dist, remainder is distributed across higher rank procs.
@@ -136,7 +139,7 @@ void distribute(int gsz, int proc, int st[], int en[], int sz[])
 
   // lower rank procs
   st[0] = 0;
-  en[0] = lsz-1;
+  en[0] = lsz - 1;
   sz[0] = lsz;
   for (int i = 1; i < proc - extra; i++)
   {
@@ -186,7 +189,7 @@ void partition(
     if (pdim[i] == D_NONE)
     { // all local
       lstart[i] = 0;
-      lend[i] = gsize-1;
+      lend[i] = gsize - 1;
       lsize[i] = gsize;
       return;
     }
