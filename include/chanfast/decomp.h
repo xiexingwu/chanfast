@@ -40,3 +40,11 @@ private:
   int *y1st, *y1en, *y1dist;
   int *z1st, *z1en, *z1dist;
 };
+
+extern const int D_NONE, D_ROW, D_COL;
+void partition(
+    int nx, int ny, int nz, int pdim[3],
+    int dims[2], int coord[2],
+    int lstart[3], int lend[3], int lsize[3]);
+void distribute(
+    int gsz, int proc, int st[], int en[], int sz[]);

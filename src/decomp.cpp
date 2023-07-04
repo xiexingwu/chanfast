@@ -3,18 +3,6 @@
 
 const int D_NONE = 0, D_ROW = 1, D_COL = 2;
 
-void partition(
-    int nx, int ny, int nz, int pdim[3],
-    int dims[2], int coord[2],
-    int lstart[3], int lend[3], int lsize[3]);
-void distribute(
-    int gsz, int proc, int st[], int en[], int sz[]);
-void get_dist(
-    int nx, int ny, int nz, int dims[2],
-    int x1st[], int x1en[], int x1dist[],
-    int y1st[], int y1en[], int y1dist[],
-    int y2st[], int y2en[], int y2dist[],
-    int z2st[], int z2en[], int z2dist[]);
 
 // Decomp
 Decomp::Decomp() {} // Dummy
